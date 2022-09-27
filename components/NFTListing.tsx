@@ -7,10 +7,10 @@ interface Props{
     sell: boolean;
 }
 
-const NFTListing: FunctionComponent<Props> = ({nftItems, sell }) => {
+const NFTListing: FunctionComponent<Props> = ({ nftItems, sell }) => {
     return (
         <div className="flex flex-wrap gap-5">
-            {nftItems.map((nftItem, index) => {
+            {nftItems.map((nftItem: any, index: number) => {
                 return <NFTCard key={index} nftItem={nftItem} sell={sell} />
             })}
         </div>

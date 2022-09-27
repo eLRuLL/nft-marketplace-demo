@@ -9,31 +9,25 @@ describe("NFTMarket", function () {
 
         const marketAddress = market.address;
 
-        const NFT = await ethers.getContractFactory("NFT");
-        const nft = await NFT.deploy(marketAddress);
-        await nft.deployed();
-        
-        const nftContractAddress = nft.address;
-
         let listingCommission = await market.getListingCommission();
         expect(listingCommission).to.equal(ethers.utils.parseUnits('0.01', 'ether'));
         listingCommission = listingCommission.toString();
         
         const testPrice = ethers.utils.parseUnits('100', 'ether');
 
-        await nft.createToken("https://token1.com");
-        await nft.createToken("https://token2.com");
-
-        await market.createMarketItem(nftContractAddress, 1, testPrice, { value: listingCommission });
-        await market.createMarketItem(nftContractAddress, 2, testPrice, { value: listingCommission });
-
+        let something = await market.createToken("https://token1.com", testPrice, { value: listingCommission });
+        let something2 = await market.createToken("https://token2.com", testPrice, { value: listingCommission });
 
         const [_, buyerAddress] = await ethers.getSigners();
+        let items = await market.getMarketItems();
 
-        await market.connect(buyerAddress).createMarketSale(nftContractAddress, 1, { value: testPrice });
+        expect(items).to.have.a.lengthOf(2);
 
-        const items = await market.getMarketItems();
+        await market.connect(buyerAddress).createMarketSale(items[0].tokenId, { value: testPrice });
 
-        expect(items).to.have.a.lengthOf(1);
-    })
+        const mySellingItems = await market.getMySellingItems();
+
+        expect(mySellingItems).to.have.a.lengthOf(1);
+        expect(await market.getMarketItems()).to.have.a.lengthOf(1);
+    });
 });

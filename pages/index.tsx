@@ -3,18 +3,47 @@ import Head from 'next/head';
 import NavigationBar from "../components/NavigationBar";
 import { useEffect, useState } from "react";
 import { NFTItem } from "../schemas/NFTItem";
-import { ALLNFTs } from "../schemas/TestData";
 import NFTListing from "../components/NFTListing";
+import { ethers } from 'ethers';
+
+import NFTMarket from '../artifacts/contracts/NFTMarket.sol/NFTMarket.json';
+
+import { nftMarketAddress } from '../contracts-config';
+import axios from 'axios';
 
 const Home: NextPage = () => {
     const [NFTItems, setNFTItems] = useState<NFTItem[]>([]);
 
     useEffect(() => {
         loadAvailableNFTs();
-    });
+    }, []);
 
     async function loadAvailableNFTs() {
-        setNFTItems(ALLNFTs);
+        const provider = new ethers.providers.JsonRpcProvider()
+        const nftMarketContract = new ethers.Contract(nftMarketAddress, NFTMarket.abi, provider);
+
+        const data = await nftMarketContract.getMarketItems();
+
+        const items = await Promise.all(data.map(async (item: any) => {
+            const tokenURI = await nftMarketContract.tokenURI(item.tokenId);
+            const meta = await axios.get(tokenURI);
+
+            let price = ethers.utils.formatUnits(item.price.toString(), "ether");
+
+            const nftItem: NFTItem = {
+                price: price,
+                description: meta.data.description,
+                title: meta.data.title,
+                url: meta.data.url,
+                tokenId: item.tokenId.toNumber(),
+                seller: item.seller,
+                owner: item.owner
+            }
+
+            return nftItem;
+        }));
+
+        setNFTItems(items);
     }
 
     return (
@@ -26,7 +55,10 @@ const Home: NextPage = () => {
             </Head>
             <NavigationBar />
             <main className={"m-10"}>
-                <NFTListing nftItems={NFTItems} sell={true} />
+                {NFTItems.length ?
+                    <NFTListing nftItems={NFTItems} sell={true} />
+                    : <div>No available items yet in the market.</div>
+                }
             </main>
     </div>
   )

@@ -4,6 +4,11 @@ import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faEthereum } from "@fortawesome/free-brands-svg-icons";
 import classNames from "classnames";
 
+import Web3Modal from "web3modal";
+import { ethers } from "ethers";
+import { nftMarketAddress } from "../contracts-config";
+import NFTMarket from '../artifacts/contracts/NFTMarket.sol/NFTMarket.json';
+
 interface Props {
     nftItem: NFTItem;
     sell?: boolean;
@@ -31,9 +36,25 @@ class NFTCard extends Component<Props, State> {
         }));
     };
 
+    handleBuyNFT = async () => {
+        const web3Modal = new Web3Modal();
+        const connection = await web3Modal.connect();
+        const provider = new ethers.providers.Web3Provider(connection);
+
+        const signer = provider.getSigner();
+
+        const contract = new ethers.Contract(nftMarketAddress, NFTMarket.abi, signer);
+
+        const price = ethers.utils.parseUnits(this.props.nftItem.price.toString(), 'ether');
+
+        const transaction = await contract.createMarketSale(this.props.nftItem.tokenId, {value: price});
+
+        await transaction.wait();
+    }
+
     render () {
         return (
-            <div onClick={() => { alert("buying " + this.props.nftItem.title) }} className={classNames(
+            <div onClick={this.props.sell ? this.handleBuyNFT : () => {}} className={classNames(
                 "flex flex-col bg-white rounded-lg shadow-xl relative overflow-hidden",
                 {"shadow-2xl": this.state.hovered},
                 {"cursor-pointer": this.state.hovered},

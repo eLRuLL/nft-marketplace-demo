@@ -2,5 +2,8 @@ export interface NFTItem {
     description: string;
     title: string;
     url: string;
-    price: number;
+    price: string;
+    tokenId: number;
+    seller: string;
+    owner: string;
 }

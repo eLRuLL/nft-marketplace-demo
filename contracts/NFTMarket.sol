@@ -2,10 +2,10 @@
 pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 
-contract NFTMarket is ReentrancyGuard {
+contract NFTMarket is ERC721URIStorage {
     using Counters for Counters.Counter;
     Counters.Counter private _itemIds;
     Counters.Counter private _itemsSold;
@@ -13,13 +13,11 @@ contract NFTMarket is ReentrancyGuard {
     address payable marketOwner;    // This is us
     uint256 listingCommission = 0.01 ether;
 
-    constructor() {
+    constructor() ERC721("MarketPlaceDemo Tokens", "MPDT") {
         marketOwner = payable(msg.sender);
     }
 
     struct MarketItem {
-        uint itemId;
-        address nftContract;
         uint256 tokenId;
         address payable seller;
         address payable owner;
@@ -30,8 +28,6 @@ contract NFTMarket is ReentrancyGuard {
     mapping(uint256 => MarketItem) private idToMarketItem;
 
     event MarketItemCreated (
-        uint indexed itemId,
-        address indexed nftContract,
         uint256 indexed tokenId,
         address seller,
         address owner,
@@ -43,56 +39,59 @@ contract NFTMarket is ReentrancyGuard {
         return listingCommission;
     }
 
+    function createToken(string memory tokenURI, uint256 price) public payable returns (uint) {
+        _itemIds.increment();
+        uint256 newItemId = _itemIds.current();
+
+        _mint(msg.sender, newItemId);
+        _setTokenURI(newItemId, tokenURI);
+        createMarketItem(newItemId, price);
+        
+        return newItemId;
+    }
+
     function createMarketItem(
-        address nftContract,
         uint256 tokenId,
         uint256 price
-    ) public payable nonReentrant {
+    ) private {
         require(price > 0, "Free NFTs are not allowed");
         require(msg.value == listingCommission, "You must pay the listing commission");
 
-        _itemIds.increment();
-        uint256 itemId = _itemIds.current();
-
-        idToMarketItem[itemId] = MarketItem(
-            itemId,
-            nftContract,
+        idToMarketItem[tokenId] = MarketItem(
             tokenId,
             payable(msg.sender),
-            payable(address(0)),
+            payable(address(this)),
             price,
             false
         );
 
-        IERC721(nftContract).transferFrom(msg.sender, address(this), tokenId);
+        _transfer(msg.sender, address(this), tokenId);
 
         emit MarketItemCreated(
-            itemId, 
-            nftContract, 
-            tokenId, 
-            msg.sender, 
-            address(0), 
-            price, 
+            tokenId,
+            msg.sender,
+            address(this),
+            price,
             false
         );
     }
 
     function createMarketSale(
-        address nftContract,
-        uint256 itemId
-    ) public payable nonReentrant {
-        uint price = idToMarketItem[itemId].price;
-        uint tokenId = idToMarketItem[itemId].tokenId;
+        uint256 tokenId
+    ) public payable {
+        uint price = idToMarketItem[tokenId].price;
+        address seller = idToMarketItem[tokenId].seller;
 
         require(msg.value == price, "You must submit the asked price to purchase");
 
-        idToMarketItem[itemId].seller.transfer(msg.value);
-        IERC721(nftContract).transferFrom(address(this), msg.sender, tokenId);
-        idToMarketItem[itemId].owner = payable(msg.sender);
-        idToMarketItem[itemId].sold = true;
+        idToMarketItem[tokenId].seller = payable(address(0));
+        idToMarketItem[tokenId].owner = payable(msg.sender);
+        idToMarketItem[tokenId].sold = true;
         
         _itemsSold.increment();
+        _transfer(address(this), msg.sender, tokenId);
         payable(marketOwner).transfer(listingCommission);
+        payable(seller).transfer(msg.value);
     }
 
     function getMarketItems() public view returns (MarketItem[] memory) {
@@ -103,8 +102,8 @@ contract NFTMarket is ReentrancyGuard {
         MarketItem[] memory items = new MarketItem[](unsoldItemCount);
 
         for (uint i = 0; i < itemCount; i++) {
-            if (idToMarketItem[i + 1].owner == address(0)) {
-                uint currentId = idToMarketItem[i + 1].itemId;
+            if (idToMarketItem[i + 1].owner == address(this)) {
+                uint currentId = i + 1;
                 MarketItem storage currentItem = idToMarketItem[currentId];
                 items[currentIndex] = currentItem;
 
@@ -129,7 +128,7 @@ contract NFTMarket is ReentrancyGuard {
 
         for (uint i = 0; i < totalItemCount; i++) {
             if (idToMarketItem[i + 1].owner == msg.sender) {
-                uint currentId  = idToMarketItem[i + 1].itemId;
+                uint currentId  = i + 1;
                 MarketItem storage currentItem = idToMarketItem[currentId];
                 items[currentIndex] = currentItem;
 
@@ -145,17 +144,21 @@ contract NFTMarket is ReentrancyGuard {
         uint itemCount = 0;
         uint currentIndex = 0;
 
-        MarketItem[] memory items = new MarketItem[](itemCount);
-
         for (uint i = 0; i < totalItemCount; i++) {
             if (idToMarketItem[i + 1].seller == msg.sender) {
-                uint currentId = idToMarketItem[i + 1].itemId;
+                itemCount += 1;
+            }
+        }
+
+        MarketItem[] memory items = new MarketItem[](itemCount);
+        for (uint i = 0; i < totalItemCount; i++) {
+            if (idToMarketItem[i + 1].seller == msg.sender) {
+                uint currentId = i + 1;
                 MarketItem storage currentItem = idToMarketItem[currentId];
                 items[currentIndex] = currentItem;
                 currentIndex += 1;
             }
         }
-
         return items;
     }
 }
