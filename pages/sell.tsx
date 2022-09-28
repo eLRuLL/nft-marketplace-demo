@@ -12,7 +12,9 @@ import { nftMarketAddress } from "../contracts-config";
 import NFTMarket from '../artifacts/contracts/NFTMarket.sol/NFTMarket.json';
 import axios from "axios";
 
-const auth = 'Basic ' + Buffer.from('2FMGJKlegpp1hP0r96aBr5wQKzG' + ':' + '9b11ca69ca35774af9c38cabaa2df41b').toString('base64');
+import { projectID, projectSecret } from "../infura-config";
+
+const auth = 'Basic ' + Buffer.from(projectID + ':' + projectSecret).toString('base64');
 
 
 const client = ipfsHTTPClient({

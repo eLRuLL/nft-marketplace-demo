@@ -19,6 +19,9 @@ npx hardhat run scripts/deploy.ts --network localhost
 
 Copy the output (contract address) to the variables defined in `contracts-config.js` file.
 
+We are also using infura for IPFS, and to setup that you need to create an account and project [here](https://infura.io/). 
+After creating that, Infura will give you a projectID and projectSecret, which you have to set in the `infura-config.js` file.
+
 Now you can deploy the application and start using the application:
 
 ```bash
