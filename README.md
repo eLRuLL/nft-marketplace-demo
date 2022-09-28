@@ -27,3 +27,9 @@ Now you can deploy the application and start using the application:
 ```bash
 npm run dev
 ```
+
+## TODO
+- Test it on a remote network
+- Authentication
+- Search, Categorizing and Filtering functionality
+- Incorporate different types of wallets
